@@ -10,14 +10,18 @@ extern "C" {
 #include "HAPBase.h"
 #include <stdlib.h>
 #include <unistd.h>
+#include "setupEndpointsTLV.h"
+#include "StreamingSession.h"
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull begin
 #endif
 
-bool isValid(void* unsused HAP_UNUSED) {
+bool isValid1(void* unsused HAP_UNUSED) {
     return true;
 }
+
+/* ---------------------------------------------------------------------------------------------*/
 
 typedef struct {
     uint8_t profileID;
@@ -136,7 +140,7 @@ const VideoAttributesFormat videoAttributesFormat = {
                                                      &videoAttributesImageHeightMember,
                                                      &videoAttributesFrameRateMember,
                                                      NULL },
-    .callbacks = { .isValid = isValid }
+    .callbacks = { .isValid = isValid1 }
 };
 const HAPStructTLVMember videoAttributesMember = { .valueOffset = HAP_OFFSETOF(videoCodecConfigStruct, videoAttributes),
                                                    .isSetOffset = 0,
@@ -153,7 +157,7 @@ const VideoCodecConfigFormat videoCodecParamsFormat = {
                                                      &videoCodecParamsLevelMember,
                                                      &videoCodecParamsPacketizationModeMember,
                                                      NULL },
-    .callbacks = { .isValid = isValid }
+    .callbacks = { .isValid = isValid1 }
 };
 const HAPStructTLVMember videoCodecParamsMember = { .valueOffset =
                                                             HAP_OFFSETOF(videoCodecConfigStruct, videoCodecParams),
@@ -185,7 +189,7 @@ const VideoCodecConfigFormat videoCodecConfigFormat = {
                                                      &videoCodecParamsMember,
                                                      &videoAttributesMember,
                                                      NULL },
-    .callbacks = { .isValid = isValid }
+    .callbacks = { .isValid = isValid1 }
 };
 
 const HAPStructTLVMember videoCodecConfigMember = { .valueOffset =
@@ -200,7 +204,7 @@ const HAPStructTLVMember videoCodecConfigMember = { .valueOffset =
 const SupportedVideoConfigFormat supportedVideoConfigFormat = {
     .type = kHAPTLVFormatType_Struct,
     .members = (const HAPStructTLVMember* const[]) { &videoCodecConfigMember, NULL },
-    .callbacks = { .isValid = isValid }
+    .callbacks = { .isValid = isValid1 }
 };
 
 supportedVideoConfigStruct supportedVideoConfigValue = {
@@ -211,82 +215,222 @@ supportedVideoConfigStruct supportedVideoConfigValue = {
                           .videoAttributes = { .imageWidth = 1920, .imageHeight = 1080, .frameRate = 30 } }
 };
 
+/* ---------------------------------------------------------------------------------------------*/
+
 int main() {
-
+    uint8_t setupBytes[121];
+    HAPRawBufferCopyBytes(&setupBytes, &setupEndpoints, 121);
     HAPError err;
+    HAPTLVReaderRef reader;
+    HAPTLVReaderCreateWithOptions(
+            &reader,
+            &(const HAPTLVReaderOptions) { .bytes = setupBytes,
+                                           .numBytes = HAPArrayCount(setupBytes),
+                                           .maxBytes = HAPArrayCount(setupBytes) });
 
-    HAPTLVWriterRef responseWriter;
+    streamingSettings cameraEndpoint;
 
-    // const HAPTLV videoCodecConfigTLV = { .type = 1, .value = { .bytes = outBuffer, .numBytes = outBufferSize } };
+    err = handleWrite(&reader, &cameraEndpoint);
+    HAPAssert(!err);
+    streamingSession newSession;
 
+    newSession.settings = cameraEndpoint;
+
+    newSession.status = kHAPCharacteristicValue_StreamingStatus_Available;
+
+    HAPTLVWriterRef myWriter;
     uint8_t bytes[1024];
-    HAPTLVWriterCreate(&responseWriter, &bytes, sizeof bytes);
-
-    err = HAPTLVWriterEncode(&responseWriter, &supportedVideoConfigFormat, &supportedVideoConfigValue);
-
+    HAPTLVWriterCreate(&myWriter, &bytes, sizeof bytes);
+    err = handleRead(&myWriter, &newSession);
     HAPAssert(!err);
 
     void* actualBytes;
     size_t numActualBytes;
 
-    HAPTLVWriterGetBuffer(&responseWriter, &actualBytes, &numActualBytes);
+    HAPTLVWriterGetBuffer(&myWriter, &actualBytes, &numActualBytes);
 
-    HAPTLVReaderRef reader;
-    HAPTLVReaderCreateWithOptions(
-            &reader,
-            &(const HAPTLVReaderOptions) {
-                    .bytes = actualBytes, .numBytes = numActualBytes, .maxBytes = numActualBytes });
+    HAPLogDebug(&kHAPLog_Default, "size of output: %lu", numActualBytes);
 
-    HAPTLV tlv;
-    bool valid = false;
+    // for (size_t i = 0; i < numActualBytes; i++)
+    // {
+    //     HAPLogDebug(&kHAPLog_Default, "0x%02X", ((uint8_t*)actualBytes)[i]);
+    // }
+    
 
-    err = HAPTLVReaderGetNext(&reader, &valid, &tlv);
+    // size_t numExpectedBytes = 121;
+    // HAPAssert(numActualBytes == numExpectedBytes);
+    // HAPAssert(HAPRawBufferAreEqual(actualBytes, &setupEndpoints, numActualBytes));
+
+    /*     HAPTLV sessionId, controllerAddress, videoParams, audioParams;
+    sessionId.type = 1;
+    controllerAddress.type = 3;
+    videoParams.type = 4;
+    audioParams.type = 5;
+    err = HAPTLVReaderGetAll(
+            &reader, (HAPTLV* const[]) { &sessionId, &controllerAddress, &videoParams, &audioParams, NULL });
     HAPAssert(!err);
-    HAPAssert(valid);
-    HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\n", tlv.type, tlv.value.numBytes);
 
-    if (tlv.type == 1) {
-        uint8_t buffer[tlv.value.numBytes];
-        HAPRawBufferCopyBytes(buffer, &tlv.value.bytes[0], tlv.value.numBytes);
-        HAPTLVReaderRef codecReader;
-        HAPTLVReaderCreateWithOptions(
-                &codecReader,
-                &(const HAPTLVReaderOptions) { .bytes = buffer, .numBytes = sizeof buffer, .maxBytes = sizeof buffer });
-        HAPTLV typeTLV, paramsTLV, attributesTLV;
-        typeTLV.type = 1;
-        paramsTLV.type = 2;
-        attributesTLV.type = 3;
-        err = HAPTLVReaderGetAll(&codecReader, (HAPTLV* const[]) { &typeTLV, &paramsTLV, &attributesTLV, NULL });
-        HAPAssert(!err);
-        HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\n", typeTLV.type, typeTLV.value.numBytes);
-        HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\n", paramsTLV.type, paramsTLV.value.numBytes);
-        HAPLogDebug(
-                &kHAPLog_Default, "tlv type: %d\ntlv size: %lu\n", attributesTLV.type, attributesTLV.value.numBytes);
-        // parse attributes
-        uint8_t attributesBuffer[attributesTLV.value.numBytes];
-        HAPRawBufferCopyBytes(attributesBuffer, &attributesTLV.value.bytes[0], attributesTLV.value.numBytes);
-        HAPTLVReaderRef attributesReader;
-        HAPTLVReaderCreateWithOptions(
-                &attributesReader,
-                &(const HAPTLVReaderOptions) { .bytes = attributesBuffer,
-                                               .numBytes = sizeof attributesBuffer,
-                                               .maxBytes = sizeof attributesBuffer });
-        HAPTLV imageWidth, imageHeight, frameRate;
-        imageWidth.type = 1;
-        imageHeight.type = 2;
-        frameRate.type = 3;
-        err = HAPTLVReaderGetAll(&attributesReader, (HAPTLV* const[]) { &imageWidth, &imageHeight, &frameRate, NULL });
-        HAPAssert(!err);
-        uint16_t width = ((const uint16_t*) imageWidth.value.bytes)[0];
-        uint16_t height = ((const uint16_t*) imageHeight.value.bytes)[0];
-        uint8_t framerate = ((const uint8_t*) frameRate.value.bytes)[0];
-        HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\nwidth: %u\n", imageWidth.type, imageWidth.value.numBytes, width);
-        HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\nheight: %u\n", imageHeight.type, imageHeight.value.numBytes, height);
-        HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\nrate: %u\n", frameRate.type, frameRate.value.numBytes, framerate);
-    }
-    return err;
-    // return kHAPError_None;
+    controllerAddressStruct myControllerAddress;
 
+    uint8_t addressBuffer[controllerAddress.value.numBytes];
+    HAPRawBufferCopyBytes(addressBuffer, &controllerAddress.value.bytes[0], controllerAddress.value.numBytes);
+
+    HAPTLVReaderRef addressReader;
+    HAPTLVReaderCreateWithOptions(
+            &addressReader,
+            &(const HAPTLVReaderOptions) { .bytes = addressBuffer,
+                                           .numBytes = controllerAddress.value.numBytes,
+                                           .maxBytes = controllerAddress.value.numBytes });
+
+    err = HAPTLVReaderDecode(&addressReader, &controllerAddressFormat, &myControllerAddress);
+
+    HAPLogDebug(&kHAPLog_Default, "IP Address Version: %d\n", myControllerAddress.ipAddrVersion);
+        HAPLogDebug(&kHAPLog_Default, "IP Address pointer: %p\n", myControllerAddress.ipAddress);
+        HAPLogDebug(&kHAPLog_Default, "IP Address: %s\n", (char*) &myControllerAddress.ipAddress);
+    HAPLogDebug(&kHAPLog_Default, "video port: %u\n", myControllerAddress.videoPort);
+        HAPLogDebug(&kHAPLog_Default, "audio port: %u\n", myControllerAddress.audioPort); */
+
+    /**
+     * @brief Let's encode and see if we have same buffers
+     *
+     */
+
+    /*     controllerAddressStruct myOutControllerAddress = {
+        .audioPort = 65451, .videoPort = 49536, .ipAddrVersion = 0, .ipAddress = "10.0.1.210"
+    };
+
+    HAPTLVWriterRef myWriter;
+    uint8_t bytes[1024];
+    HAPTLVWriterCreate(&myWriter, &bytes, sizeof bytes);
+
+    // err = HAPTLVWriterAppend(&myWriter, &sessionId);
+    // HAPAssert(!err);
+
+    // err = HAPTLVWriterAppend(&myWriter, &videoParams);
+    // HAPAssert(!err);
+
+    // err = HAPTLVWriterAppend(&myWriter, &audioParams);
+    // HAPAssert(!err);
+
+    err = HAPTLVWriterEncode(&myWriter, &controllerAddressFormat, &myOutControllerAddress);
+    HAPAssert(!err);
+
+    void* actualBytes;
+    size_t numActualBytes;
+
+    HAPTLVWriterGetBuffer(&myWriter, &actualBytes, &numActualBytes);
+
+    uint8_t myBytes[] = {
+        0x03, 0x17,       // Controller Address has type 1, 2, 3 4
+        0x01, 0x01, 0x00, // IP Address Version
+        0x02, 0x0A,       // IP Address  char[] 10.0.1.210
+            0x31, 0x30, 0x2E, 0x30, 0x2E, 0x31, 0x2E, 0x32, 0x31, 0x30, 0x03, 0x02, 0x80, 0xC1, // Video RTP Port
+       uint16_t 0x04, 0x02, 0xAB, 0xFF,                                                             // Audio RTP Port
+       uint16_t
+    };
+
+        HAPRawBufferCopyBytes(&myBytes[0], &actualBytes[0], numActualBytes); */
+
+    // size_t numExpectedBytes = 121;
+    // HAPAssert(numActualBytes == numExpectedBytes);
+    // HAPAssert(HAPRawBufferAreEqual(actualBytes, setupEndpoints, numActualBytes));
+
+    return kHAPError_None;
+    // This works to parse
+    /*     HAPTLV tlv;
+        bool valid = false;
+
+        err = HAPTLVReaderGetNext(&reader, &valid, &tlv);
+        HAPAssert(!err);
+        HAPAssert(valid);
+        HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\n", tlv.type, tlv.value.numBytes);
+
+        return err; */
+    /*     HAPError err;
+
+        HAPTLVWriterRef responseWriter;
+
+        // const HAPTLV videoCodecConfigTLV = { .type = 1, .value = { .bytes = outBuffer, .numBytes = outBufferSize } };
+
+        uint8_t bytes[1024];
+        HAPTLVWriterCreate(&responseWriter, &bytes, sizeof bytes);
+
+        err = HAPTLVWriterEncode(&responseWriter, &supportedVideoConfigFormat, &supportedVideoConfigValue);
+
+        HAPAssert(!err);
+
+        void* actualBytes;
+        size_t numActualBytes;
+
+        HAPTLVWriterGetBuffer(&responseWriter, &actualBytes, &numActualBytes);
+
+        HAPTLVReaderRef reader;
+        HAPTLVReaderCreateWithOptions(
+                &reader,
+                &(const HAPTLVReaderOptions) {
+                        .bytes = actualBytes, .numBytes = numActualBytes, .maxBytes = numActualBytes });
+
+        HAPTLV tlv;
+        bool valid = false;
+
+        err = HAPTLVReaderGetNext(&reader, &valid, &tlv);
+        HAPAssert(!err);
+        HAPAssert(valid);
+        HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\n", tlv.type, tlv.value.numBytes);
+
+        if (tlv.type == 1) {
+            uint8_t buffer[tlv.value.numBytes];
+            HAPRawBufferCopyBytes(buffer, &tlv.value.bytes[0], tlv.value.numBytes);
+            HAPTLVReaderRef codecReader;
+            HAPTLVReaderCreateWithOptions(
+                    &codecReader,
+                    &(const HAPTLVReaderOptions) { .bytes = buffer, .numBytes = sizeof buffer, .maxBytes = sizeof buffer
+       }); HAPTLV typeTLV, paramsTLV, attributesTLV; typeTLV.type = 1; paramsTLV.type = 2; attributesTLV.type = 3; err =
+       HAPTLVReaderGetAll(&codecReader, (HAPTLV* const[]) { &typeTLV, &paramsTLV, &attributesTLV, NULL });
+            HAPAssert(!err);
+            HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\n", typeTLV.type, typeTLV.value.numBytes);
+            HAPLogDebug(&kHAPLog_Default, "tlv type: %d\ntlv size: %lu\n", paramsTLV.type, paramsTLV.value.numBytes);
+            HAPLogDebug(
+                    &kHAPLog_Default, "tlv type: %d\ntlv size: %lu\n", attributesTLV.type,
+       attributesTLV.value.numBytes);
+            // parse attributes
+            uint8_t attributesBuffer[attributesTLV.value.numBytes];
+            HAPRawBufferCopyBytes(attributesBuffer, &attributesTLV.value.bytes[0], attributesTLV.value.numBytes);
+            HAPTLVReaderRef attributesReader;
+            HAPTLVReaderCreateWithOptions(
+                    &attributesReader,
+                    &(const HAPTLVReaderOptions) { .bytes = attributesBuffer,
+                                                   .numBytes = sizeof attributesBuffer,
+                                                   .maxBytes = sizeof attributesBuffer });
+            HAPTLV imageWidth, imageHeight, frameRate;
+            imageWidth.type = 1;
+            imageHeight.type = 2;
+            frameRate.type = 3;
+            err = HAPTLVReaderGetAll(&attributesReader, (HAPTLV* const[]) { &imageWidth, &imageHeight, &frameRate, NULL
+       }); HAPAssert(!err); uint16_t width = ((const uint16_t*) imageWidth.value.bytes)[0]; uint16_t height = ((const
+       uint16_t*) imageHeight.value.bytes)[0]; uint8_t framerate = ((const uint8_t*) frameRate.value.bytes)[0];
+            HAPLogDebug(
+                    &kHAPLog_Default,
+                    "tlv type: %d\ntlv size: %lu\nwidth: %u\n",
+                    imageWidth.type,
+                    imageWidth.value.numBytes,
+                    width);
+            HAPLogDebug(
+                    &kHAPLog_Default,
+                    "tlv type: %d\ntlv size: %lu\nheight: %u\n",
+                    imageHeight.type,
+                    imageHeight.value.numBytes,
+                    height);
+            HAPLogDebug(
+                    &kHAPLog_Default,
+                    "tlv type: %d\ntlv size: %lu\nrate: %u\n",
+                    frameRate.type,
+                    frameRate.value.numBytes,
+                    framerate);
+        }
+        return err;
+        // return kHAPError_None;
+     */
     /**
      * @brief This kinda works.  But, at this point, just figure out the HAP_STRUCT stuff.  It feels
      * like there may be problems with arrays of TLV's vice just adding a TLV and letting the writer
