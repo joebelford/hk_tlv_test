@@ -52,7 +52,7 @@ typedef struct {
 typedef struct {
     streamingSettings settings;
     HAPCharacteristicValue_StreamingStatus status;
-    in_addr_t ip_address;
+    in_addr_t dst_ip_address;
     uint32_t ssrcVideo;
     uint32_t ssrcAudio;
 } streamingSession;
