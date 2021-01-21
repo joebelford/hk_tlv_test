@@ -13,14 +13,58 @@ extern "C" {
 #include "setupEndpointsTLV.h"
 #include "StreamingSession.h"
 #include "StreamingConfiguration.h"
+#include "selectedRTPTLV.h"
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull begin
 #endif
-HAPError testStreamingSession();
-HAPError testStreamingSession() {
-    uint8_t setupBytes[121];
-    HAPRawBufferCopyBytes(&setupBytes, &setupEndpoints, 121);
+
+typedef struct {
+    streamingSession session;
+} AccessoryContext;
+
+HAPError handleSetupEndpointsWrite(HAPTLVReaderRef* reader, void* context) {
+    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    HAPError err;
+    AccessoryContext* myContext = context; 
+    streamingSession* session = &(myContext->session);
+    err = handleWrite(reader, session);
+    HAPAssert(!err);
+
+    return err;
+
+};
+
+HAPError handleSetupEndpointsRead(HAPTLVWriterRef* responseWriter, void* context){
+    HAPError err;
+    AccessoryContext* myContext = context; 
+    streamingSession* session = &(myContext->session);
+    controllerAddressStruct accessoryAddress = session->controllerAddress;
+    const char ipAddr[] = "10.0.1.5";
+    in_addr_t ipAddress;
+
+    inet_pton(AF_INET, ipAddr, &ipAddress);
+
+    accessoryAddress.ipAddress = ipAddress;
+
+    session->accessoryAddress = accessoryAddress;
+
+    session->status = kHAPCharacteristicValue_StreamingStatus_Available;
+    session->ssrcVideo = 1;
+    session->ssrcAudio = 1;
+
+    
+    uint8_t bytes[1024];
+    HAPTLVWriterCreate(responseWriter, &bytes, sizeof bytes);
+    err = handleRead(responseWriter, session);
+
+    return err;
+}
+
+HAPError testSelectedRTP() {
+    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    uint8_t setupBytes[sizeof(selectedRTP)];
+    HAPRawBufferCopyBytes(&setupBytes, &selectedRTP, sizeof(selectedRTP)); // make a copy so we can compare later
     HAPError err;
     HAPTLVReaderRef reader;
     HAPTLVReaderCreateWithOptions(
@@ -29,44 +73,49 @@ HAPError testStreamingSession() {
                                            .numBytes = HAPArrayCount(setupBytes),
                                            .maxBytes = HAPArrayCount(setupBytes) });
 
-    streamingSession newSession;
+    err = HAPTLVReaderGetAll(&reader, (HAPTLV* const[]) { NULL });
 
-    err = handleWrite(&reader, &newSession);
+    return err;
+};
+
+HAPError testCrossFile(void* context){
+
+    HAPError err;
+    HAPTLVReaderRef setupEndpointsReader;
+
+    uint8_t setupBytes[sizeof(setupEndpoints)];
+    HAPRawBufferCopyBytes(&setupBytes, &setupEndpoints, sizeof(setupEndpoints));
+    HAPTLVReaderCreateWithOptions(
+        &setupEndpointsReader,
+        &(const HAPTLVReaderOptions) { .bytes = setupBytes,
+                                        .numBytes = HAPArrayCount(setupBytes),
+                                        .maxBytes = HAPArrayCount(setupBytes) });
+    err = handleSetupEndpointsWrite(&setupEndpointsReader, context);
     HAPAssert(!err);
 
-    controllerAddressStruct accessoryAddress = newSession.controllerAddress;
-    const char ipAddr[] = "10.0.1.5";
-    in_addr_t ipAddress;
-
-    inet_pton(AF_INET, ipAddr, &ipAddress);
-
-    accessoryAddress.ipAddress = ipAddress;
-
-    newSession.accessoryAddress = accessoryAddress;
-
-    newSession.status = kHAPCharacteristicValue_StreamingStatus_Available;
-    newSession.ssrcVideo = 1;
-    newSession.ssrcAudio = 1;
-
-    HAPTLVWriterRef myWriter;
-    uint8_t bytes[1024];
-    HAPTLVWriterCreate(&myWriter, &bytes, sizeof bytes);
-    err = handleRead(&myWriter, &newSession);
+    HAPTLVWriterRef setupEndpointsWriter;
+    err = handleSetupEndpointsRead(&setupEndpointsWriter, context);
     HAPAssert(!err);
 
     void* actualBytes;
     size_t numActualBytes;
 
-    HAPTLVWriterGetBuffer(&myWriter, &actualBytes, &numActualBytes);
+    HAPTLVWriterGetBuffer(&setupEndpointsWriter, &actualBytes, &numActualBytes);
 
     HAPLogDebug(&kHAPLog_Default, "size of output: %lu", numActualBytes);
+
+//TODO - Now moving on to selected RTP with this context
 
     return err;
 }
 
 int main() {
 
-    return kHAPError_None;
+    static AccessoryContext context;
+    HAPError err;
+    err = testCrossFile(&context);
+    // err = testStreamingSession();
+    return err;
 
     /*     for (size_t i = 0; i < numActualBytes; i++)
         {
