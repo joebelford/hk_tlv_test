@@ -1,19 +1,20 @@
 /**
  * @file StreamingSession.c
  * @author your name (you@domain.com)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2021-01-20
- * 
+ *
  * @copyright Copyright (c) 2021
- * 
+ *
  */
 
 #include "StreamingSession.h"
+#include <string.h>
 
 static bool isValid(void* unsused HAP_UNUSED) {
     return true;
-}
+};
 
 /**
  * The callback used to decode a value.
@@ -38,13 +39,13 @@ HAPError decodeIpAddress(in_addr_t* value, void* bytes, size_t numBytes) {
         return kHAPError_InvalidData;
     };
     return kHAPError_None;
-}
+};
 
 HAP_RESULT_USE_CHECK
 HAPError decodeUInt8value(uint8_t* value, void* bytes, size_t numBytes) {
     HAPRawBufferCopyBytes((uint8_t*) value, (uint8_t*) bytes, numBytes);
     return kHAPError_None;
-}
+};
 
 /**
  * The callback used to encode a value.
@@ -71,25 +72,25 @@ HAPError encodeIpAddress(in_addr_t* value, void* bytes, size_t maxBytes, size_t*
     }
     *numBytes = strlen(bytes);
     return kHAPError_None;
-}
+};
 
 HAPError encodeUInt8UUIDValue(uint8_t* value, void* bytes, size_t maxBytes HAP_UNUSED, size_t* numBytes) {
     HAPRawBufferCopyBytes((uint8_t*) bytes, (uint8_t*) value, UUIDLENGTH);
     *numBytes = UUIDLENGTH;
     return kHAPError_None;
-}
+};
 
 HAPError encodeUInt8KeyValue(uint8_t* value, void* bytes, size_t maxBytes HAP_UNUSED, size_t* numBytes) {
     HAPRawBufferCopyBytes((uint8_t*) bytes, (uint8_t*) value, KEYLENGTH);
     *numBytes = KEYLENGTH;
     return kHAPError_None;
-}
+};
 
 HAPError encodeUInt8SaltValue(uint8_t* value, void* bytes, size_t maxBytes HAP_UNUSED, size_t* numBytes) {
     HAPRawBufferCopyBytes((uint8_t*) bytes, (uint8_t*) value, SALTLENGTH);
     *numBytes = SALTLENGTH;
     return kHAPError_None;
-}
+};
 
 /**
  * The callback used to get the description of a value.
@@ -109,19 +110,18 @@ HAPError getIpAddressDescription(in_addr_t* value, char* bytes, size_t maxBytes)
     in_addr_t* ia = value;
     inet_ntop(AF_INET, ia, bytes, INET_ADDRSTRLEN);
     return kHAPError_None;
-}
+};
 
 HAPError getUInt8ValueDescription(uint8_t* value HAP_UNUSED, char* bytes, size_t maxBytes HAP_UNUSED) {
     char description[] = "UInt8 Value Description";
-    HAPRawBufferCopyBytes(bytes, description, sizeof(description));    
+    HAPRawBufferCopyBytes(bytes, description, sizeof(description));
     return kHAPError_None;
-}
+};
 
 /* ---------------------------------------------------------------------------------------------*/
 
-HAP_STRUCT_TLV_SUPPORT(void, ControllerAddressFormat);
+HAP_STRUCT_TLV_SUPPORT(void, AddressTypeFormat);
 HAP_STRUCT_TLV_SUPPORT(void, SrtpParametersFormat);
-HAP_STRUCT_TLV_SUPPORT(void, StreamingSettingsFormat);
 HAP_STRUCT_TLV_SUPPORT(void, StreamingSessionFormat);
 HAP_VALUE_TLV_SUPPORT(in_addr_t, IpAddressTypeFormat);
 HAP_VALUE_TLV_SUPPORT(uint8_t, SessionIdTypeFormat);
@@ -179,35 +179,40 @@ const HAPStructTLVMember audioPortTypeMember = { .valueOffset = HAP_OFFSETOF(con
 
 /* ---------------------------------------------------------------------------------------------*/
 
-const ControllerAddressFormat controllerAddressFormat = {
-    .type = kHAPTLVFormatType_Struct,
-    .members = (const HAPStructTLVMember* const[]) { &ipAddrVersionTypeMember,
-                                                     &ipAddressTypeMember,
-                                                     &videoPortTypeMember,
-                                                     &audioPortTypeMember,
-                                                     NULL },
-    .callbacks = { .isValid = isValid }
-};
+const AddressTypeFormat addressTypeFormat = { .type = kHAPTLVFormatType_Struct,
+                                              .members = (const HAPStructTLVMember* const[]) { &ipAddrVersionTypeMember,
+                                                                                               &ipAddressTypeMember,
+                                                                                               &videoPortTypeMember,
+                                                                                               &audioPortTypeMember,
+                                                                                               NULL },
+                                              .callbacks = { .isValid = isValid } };
 
-const HAPStructTLVMember controllerAddressTypeMember = { .valueOffset = HAP_OFFSETOF(streamingSettings, address),
+const HAPStructTLVMember controllerAddressTypeMember = { .valueOffset =
+                                                                 HAP_OFFSETOF(streamingSession, controller_address),
                                                          .isSetOffset = 0,
                                                          .tlvType = 3,
                                                          .debugDescription = "Controller Address Type",
-                                                         .format = &controllerAddressFormat,
+                                                         .format = &addressTypeFormat,
                                                          .isOptional = false,
                                                          .isFlat = false };
 
+const HAPStructTLVMember accessoryAddressTypeMember = { .valueOffset =
+                                                                HAP_OFFSETOF(streamingSession, accessory_address),
+                                                        .isSetOffset = 0,
+                                                        .tlvType = 3,
+                                                        .debugDescription = "Controller Address Type",
+                                                        .format = &addressTypeFormat,
+                                                        .isOptional = false,
+                                                        .isFlat = false };
+
 /* ---------------------------------------------------------------------------------------------*/
 
-const SessionIdTypeFormat sessionIdTypeFormat = {
-    .type = kHAPTLVFormatType_Value,
-    .callbacks = { .decode = decodeUInt8value,
-                   .encode = encodeUInt8UUIDValue,
-                   .getDescription = getUInt8ValueDescription }
-    //    .constraints = { .minLength = 16, .maxLength = 16 }
-};
+const SessionIdTypeFormat sessionIdTypeFormat = { .type = kHAPTLVFormatType_Value,
+                                                  .callbacks = { .decode = decodeUInt8value,
+                                                                 .encode = encodeUInt8UUIDValue,
+                                                                 .getDescription = getUInt8ValueDescription } };
 
-const HAPStructTLVMember sessionIdTypeMember = { .valueOffset = HAP_OFFSETOF(streamingSettings, sessionId),
+const HAPStructTLVMember sessionIdTypeMember = { .valueOffset = HAP_OFFSETOF(streamingSession, sessionId),
                                                  .isSetOffset = 0,
                                                  .tlvType = 1,
                                                  .debugDescription = "Session ID Type",
@@ -237,21 +242,16 @@ const HAPUInt8TLVFormat srtpCryptoSuiteTypeFormat = { .type = kHAPTLVFormatType_
                                                       .callbacks = { .getBitDescription = NULL,
                                                                      .getDescription = NULL } };
 
-const SrtpMasterKeyTypeFormat srtpMasterKeyTypeFormat = {
-    .type = kHAPTLVFormatType_Value,
-    .callbacks = { .decode = decodeUInt8value,
-                   .encode = encodeUInt8KeyValue,
-                   .getDescription = getUInt8ValueDescription }
-    //    .constraints = { .minLength = 16, .maxLength = 16 }
-};
+const SrtpMasterKeyTypeFormat srtpMasterKeyTypeFormat = { .type = kHAPTLVFormatType_Value,
+                                                          .callbacks = { .decode = decodeUInt8value,
+                                                                         .encode = encodeUInt8KeyValue,
+                                                                         .getDescription = getUInt8ValueDescription } };
 
-const SrtpMasterSaltTypeFormat srtpMasterSaltTypeFormat = {
-    .type = kHAPTLVFormatType_Value,
-    .callbacks = { .decode = decodeUInt8value,
-                   .encode = encodeUInt8SaltValue,
-                   .getDescription = getUInt8ValueDescription }
-    // .constraints = { .minLength = 14, .maxLength = 14 }
-};
+const SrtpMasterSaltTypeFormat srtpMasterSaltTypeFormat = { .type = kHAPTLVFormatType_Value,
+                                                            .callbacks = { .decode = decodeUInt8value,
+                                                                           .encode = encodeUInt8SaltValue,
+                                                                           .getDescription =
+                                                                                   getUInt8ValueDescription } };
 
 const HAPStructTLVMember srtpCryptoSuiteTypeMember = { .valueOffset = HAP_OFFSETOF(srtpParameters, srtpCryptoSuite),
                                                        .isSetOffset = 0,
@@ -288,7 +288,7 @@ const SrtpParametersFormat srtpParametersFormat = {
 
 /* ---------------------------------------------------------------------------------------------*/
 
-const HAPStructTLVMember videoParamsTypeMember = { .valueOffset = HAP_OFFSETOF(streamingSettings, videoParams),
+const HAPStructTLVMember videoParamsTypeMember = { .valueOffset = HAP_OFFSETOF(streamingSession, videoParams),
                                                    .isSetOffset = 0,
                                                    .tlvType = 4,
                                                    .debugDescription = "Video Params Type",
@@ -296,33 +296,13 @@ const HAPStructTLVMember videoParamsTypeMember = { .valueOffset = HAP_OFFSETOF(s
                                                    .isOptional = false,
                                                    .isFlat = false };
 
-const HAPStructTLVMember audioParamsTypeMember = { .valueOffset = HAP_OFFSETOF(streamingSettings, audioParams),
+const HAPStructTLVMember audioParamsTypeMember = { .valueOffset = HAP_OFFSETOF(streamingSession, audioParams),
                                                    .isSetOffset = 0,
                                                    .tlvType = 5,
                                                    .debugDescription = "Video Params Type",
                                                    .format = &srtpParametersFormat,
                                                    .isOptional = false,
                                                    .isFlat = false };
-
-/* ---------------------------------------------------------------------------------------------*/
-
-const StreamingSettingsFormat streamingSettingsFormat = {
-    .type = kHAPTLVFormatType_Struct,
-    .members = (const HAPStructTLVMember* const[]) { &sessionIdTypeMember,
-                                                     &controllerAddressTypeMember,
-                                                     &videoParamsTypeMember,
-                                                     &audioParamsTypeMember,
-                                                     NULL },
-    .callbacks = { .isValid = isValid }
-};
-
-const HAPStructTLVMember streamingSettingsTypeMember = { .valueOffset = HAP_OFFSETOF(streamingSession, settings),
-                                                         .isSetOffset = 0,
-                                                         .tlvType = 0, // ignored since flat
-                                                         .debugDescription = "Video Params Type",
-                                                         .format = &streamingSettingsFormat,
-                                                         .isOptional = false,
-                                                         .isFlat = true };
 
 /* ---------------------------------------------------------------------------------------------*/
 
@@ -348,10 +328,23 @@ const HAPStructTLVMember ssrcAudioTypeMember = { .valueOffset = HAP_OFFSETOF(str
 
 /* ---------------------------------------------------------------------------------------------*/
 
-const StreamingSessionFormat streamingSessionFormat = {
+const StreamingSessionFormat streamingSessionFormatWrite = {
     .type = kHAPTLVFormatType_Struct,
-    .members = (const HAPStructTLVMember* const[]) { &streamingSettingsTypeMember,
+    .members = (const HAPStructTLVMember* const[]) { &sessionIdTypeMember,
+                                                     &controllerAddressTypeMember,
+                                                     &videoParamsTypeMember,
+                                                     &audioParamsTypeMember,
+                                                     NULL },
+    .callbacks = { .isValid = isValid }
+};
+
+const StreamingSessionFormat streamingSessionFormatRead = {
+    .type = kHAPTLVFormatType_Struct,
+    .members = (const HAPStructTLVMember* const[]) { &sessionIdTypeMember,
                                                      &streamingStatusTypeMember,
+                                                     &accessoryAddressTypeMember,
+                                                     &videoParamsTypeMember,
+                                                     &audioParamsTypeMember,
                                                      &ssrcVideoTypeMember,
                                                      &ssrcAudioTypeMember,
                                                      NULL },
@@ -360,14 +353,14 @@ const StreamingSessionFormat streamingSessionFormat = {
 
 /* ---------------------------------------------------------------------------------------------*/
 
-HAPError handleRead(HAPTLVWriterRef* responseWriter, streamingSession* session){
+HAPError handleRead(HAPTLVWriterRef* responseWriter, streamingSession* session) {
     HAPError err;
-    err = HAPTLVWriterEncode(responseWriter, &streamingSessionFormat, session);
+    err = HAPTLVWriterEncode(responseWriter, &streamingSessionFormatRead, session);
     return err;
-}
+};
 
-HAPError handleWrite(HAPTLVReaderRef* responseReader, streamingSettings* settings){
+HAPError handleWrite(HAPTLVReaderRef* responseReader, streamingSession* session) {
     HAPError err;
-    err = HAPTLVReaderDecode(responseReader, &streamingSettingsFormat, settings);
+    err = HAPTLVReaderDecode(responseReader, &streamingSessionFormatWrite, session);
     return err;
-}
+};

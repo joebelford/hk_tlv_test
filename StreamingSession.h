@@ -19,7 +19,6 @@ extern "C" {
 #include "HAP.h"
 #include "HAPTLV+Internal.h"
 #include <arpa/inet.h>
-#include <string.h>
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull begin
@@ -43,24 +42,19 @@ typedef struct {
 } srtpParameters;
 
 typedef struct {
-    uint8_t sessionId[16]; // HAPUUID was a struct
-    controllerAddressStruct address;
+    uint8_t sessionId[16];
+    HAPCharacteristicValue_StreamingStatus status;
+    controllerAddressStruct controller_address;
     srtpParameters videoParams;
     srtpParameters audioParams;
-} streamingSettings;
-
-typedef struct {
-    streamingSettings settings;
-    HAPCharacteristicValue_StreamingStatus status;
-    in_addr_t dst_ip_address;
+    controllerAddressStruct accessory_address;
     uint32_t ssrcVideo;
     uint32_t ssrcAudio;
 } streamingSession;
 
 HAPError handleRead(HAPTLVWriterRef* responseWriter, streamingSession* session);
 
-HAPError handleWrite(HAPTLVReaderRef* responseReader, streamingSettings* settings);
-
+HAPError handleWrite(HAPTLVReaderRef* responseReader, streamingSession* settings);
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull end
