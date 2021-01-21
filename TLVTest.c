@@ -228,25 +228,24 @@ int main() {
                                            .numBytes = HAPArrayCount(setupBytes),
                                            .maxBytes = HAPArrayCount(setupBytes) });
 
-    streamingSettings cameraEndpoint;
-
-    err = handleWrite(&reader, &cameraEndpoint);
-    HAPAssert(!err);
     streamingSession newSession;
 
-    newSession.dst_ip_address = cameraEndpoint.address.ipAddress;
+    err = handleWrite(&reader, &newSession);
+    HAPAssert(!err);
 
+    controllerAddressStruct accessoryAddress = newSession.controller_address;
     const char ipAddr[] = "10.0.1.5";
-
     in_addr_t ipAddress;
 
     inet_pton(AF_INET, ipAddr, &ipAddress);
 
-    cameraEndpoint.address.ipAddress = ipAddress;
+    accessoryAddress.ipAddress = ipAddress;
 
-    newSession.settings = cameraEndpoint;
+    newSession.accessory_address = accessoryAddress;
 
     newSession.status = kHAPCharacteristicValue_StreamingStatus_Available;
+    newSession.ssrcVideo = 1;
+    newSession.ssrcAudio = 1;
 
     HAPTLVWriterRef myWriter;
     uint8_t bytes[1024];
@@ -261,10 +260,10 @@ int main() {
 
     HAPLogDebug(&kHAPLog_Default, "size of output: %lu", numActualBytes);
 
-    for (size_t i = 0; i < numActualBytes; i++)
+/*     for (size_t i = 0; i < numActualBytes; i++)
     {
         HAPLogDebug(&kHAPLog_Default, "0x%02X", ((uint8_t*)actualBytes)[i]);
-    }
+    } */
     
 
     // size_t numExpectedBytes = 121;
