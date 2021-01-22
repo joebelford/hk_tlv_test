@@ -29,6 +29,9 @@ extern "C" {
 #define SALTLENGTH 14
 #define UUIDLENGTH 16
 
+extern struct VideoCodecConfigFormat videoCodecConfigFormat;
+extern struct SupportedAudioConfigFormat supportedAudioConfigFormat;
+
 HAP_ENUM_BEGIN(uint8_t, HAPCharacteristicValue_RTPCommand) { /** Inactive. */
                                                             kHAPCharacteristicValue_RTPCommand_End = 0,
 

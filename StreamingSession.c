@@ -127,6 +127,8 @@ HAP_STRUCT_TLV_SUPPORT(void, SelectedRTPFormat);
 HAP_STRUCT_TLV_SUPPORT(void, RTPParametersFormat);
 HAP_STRUCT_TLV_SUPPORT(void, VideoRTPParametersTypeFormat);
 HAP_STRUCT_TLV_SUPPORT(void, AudioRTPParametersTypeFormat);
+HAP_STRUCT_TLV_SUPPORT(void, SelectedVideoParametersFormat);
+HAP_STRUCT_TLV_SUPPORT(void, SelectedAudioParametersFormat);
 HAP_STRUCT_TLV_SUPPORT(void, SessionControlTypeFormat);
 HAP_VALUE_TLV_SUPPORT(in_addr_t, IpAddressTypeFormat);
 HAP_VALUE_TLV_SUPPORT(uint8_t, SessionIdTypeFormat);
@@ -358,199 +360,249 @@ const StreamingSessionFormat streamingSessionFormatRead = {
 /* ---------------------------------------------------------------------------------------------*/
 
 const HAPUInt8TLVFormat payloadTypeFormat = { .type = kHAPTLVFormatType_UInt8,
-                                            .constraints = { .minimumValue = 0, .maximumValue = 0xFF },
-                                            .callbacks = { .getBitDescription = NULL, .getDescription = NULL } };
+                                              .constraints = { .minimumValue = 0, .maximumValue = 0xFF },
+                                              .callbacks = { .getBitDescription = NULL, .getDescription = NULL } };
 
 const HAPStructTLVMember payloadTypeMember = { .valueOffset = HAP_OFFSETOF(rtpParameters, payloadType),
-                                                 .isSetOffset = 0,
-                                                 .tlvType = 1,
-                                                 .debugDescription = "Payload Type",
-                                                 .format = &payloadTypeFormat,
-                                                 .isOptional = false,
-                                                 .isFlat = false };
+                                               .isSetOffset = 0,
+                                               .tlvType = 1,
+                                               .debugDescription = "Payload Type",
+                                               .format = &payloadTypeFormat,
+                                               .isOptional = false,
+                                               .isFlat = false };
 
 /* ---------------------------------------------------------------------------------------------*/
 
 const HAPStructTLVMember selectedSsrcTypeMember = { .valueOffset = HAP_OFFSETOF(rtpParameters, ssrc),
-                                                 .isSetOffset = 0,
-                                                 .tlvType = 2,
-                                                 .debugDescription = "Selected SSRC Type",
-                                                 .format = &ssrcTypeFormat,
-                                                 .isOptional = false,
-                                                 .isFlat = false };
+                                                    .isSetOffset = 0,
+                                                    .tlvType = 2,
+                                                    .debugDescription = "Selected SSRC Type",
+                                                    .format = &ssrcTypeFormat,
+                                                    .isOptional = false,
+                                                    .isFlat = false };
 
 /* ---------------------------------------------------------------------------------------------*/
 
 const HAPUInt16TLVFormat maximumBitrateTypeFormat = { .type = kHAPTLVFormatType_UInt16,
-                                            .constraints = { .minimumValue = 0, .maximumValue = 0xFFFF },
-                                            .callbacks = { .getBitDescription = NULL, .getDescription = NULL } };
+                                                      .constraints = { .minimumValue = 0, .maximumValue = 0xFFFF },
+                                                      .callbacks = { .getBitDescription = NULL,
+                                                                     .getDescription = NULL } };
 
 const HAPStructTLVMember maximumBitrateTypeMember = { .valueOffset = HAP_OFFSETOF(rtpParameters, maximumBitrate),
-                                                 .isSetOffset = 0,
-                                                 .tlvType = 3,
-                                                 .debugDescription = "Maximum Bit Rate Type",
-                                                 .format = &maximumBitrateTypeFormat,
-                                                 .isOptional = false,
-                                                 .isFlat = false };
+                                                      .isSetOffset = 0,
+                                                      .tlvType = 3,
+                                                      .debugDescription = "Maximum Bit Rate Type",
+                                                      .format = &maximumBitrateTypeFormat,
+                                                      .isOptional = false,
+                                                      .isFlat = false };
 
 /* ---------------------------------------------------------------------------------------------*/
 
 const HAPUInt32TLVFormat minRTCPIntervalTypeFormat = { .type = kHAPTLVFormatType_UInt32,
-                                            .constraints = { .minimumValue = 0, .maximumValue = 0xFFFFFFFF },
-                                            .callbacks = { .getBitDescription = NULL, .getDescription = NULL } };
+                                                       .constraints = { .minimumValue = 0, .maximumValue = 0xFFFFFFFF },
+                                                       .callbacks = { .getBitDescription = NULL,
+                                                                      .getDescription = NULL } };
 
 const HAPStructTLVMember minRTCPIntervalTypeMember = { .valueOffset = HAP_OFFSETOF(rtpParameters, minRTCPinterval),
-                                                 .isSetOffset = 0,
-                                                 .tlvType = 4,
-                                                 .debugDescription = "Min RTCP Interval Type",
-                                                 .format = &minRTCPIntervalTypeFormat,
-                                                 .isOptional = false,
-                                                 .isFlat = false };
+                                                       .isSetOffset = 0,
+                                                       .tlvType = 4,
+                                                       .debugDescription = "Min RTCP Interval Type",
+                                                       .format = &minRTCPIntervalTypeFormat,
+                                                       .isOptional = false,
+                                                       .isFlat = false };
 
 /* ---------------------------------------------------------------------------------------------*/
 
-const RTPParametersFormat rtpParametersFormat = { 
+const RTPParametersFormat rtpParametersFormat = {
     .type = kHAPTLVFormatType_Struct,
     .members = (const HAPStructTLVMember* const[]) { &payloadTypeMember,
                                                      &selectedSsrcTypeMember,
                                                      &maximumBitrateTypeMember,
                                                      &minRTCPIntervalTypeMember,
                                                      NULL },
-    .callbacks = { .isValid = isValid } };
+    .callbacks = { .isValid = isValid }
+};
 
-const HAPStructTLVMember videoRtpParametersMember = {
-                                .valueOffset = HAP_OFFSETOF(videoRtpParameters, rtpParameters),
-                                .isSetOffset = 0,
-                                .tlvType = 1,
-                                .debugDescription = "Video RTP Parameters Type",
-                                .format = &rtpParametersFormat,
-                                .isOptional = false,
-                                .isFlat = true };
+const HAPStructTLVMember videoRtpParametersMember = { .valueOffset = HAP_OFFSETOF(videoRtpParameters, rtpParameters),
+                                                      .isSetOffset = 0,
+                                                      .tlvType = 1,
+                                                      .debugDescription = "Video RTP Parameters Type",
+                                                      .format = &rtpParametersFormat,
+                                                      .isOptional = false,
+                                                      .isFlat = true };
 
-const HAPStructTLVMember audioRtpParametersMember = {
-                                .valueOffset = HAP_OFFSETOF(audioRtpParameters, rtpParameters),
-                                .isSetOffset = 0,
-                                .tlvType = 1,
-                                .debugDescription = "Audio RTP Parameters Type",
-                                .format = &rtpParametersFormat,
-                                .isOptional = false,
-                                .isFlat = true };
+const HAPStructTLVMember audioRtpParametersMember = { .valueOffset = HAP_OFFSETOF(audioRtpParameters, rtpParameters),
+                                                      .isSetOffset = 0,
+                                                      .tlvType = 1,
+                                                      .debugDescription = "Audio RTP Parameters Type",
+                                                      .format = &rtpParametersFormat,
+                                                      .isOptional = false,
+                                                      .isFlat = true };
 
 /* ---------------------------------------------------------------------------------------------*/
 
 const HAPUInt16TLVFormat maximumMTUTypeFormat = { .type = kHAPTLVFormatType_UInt16,
-                                            .constraints = { .minimumValue = 0, .maximumValue = 0xFFFF },
-                                            .callbacks = { .getBitDescription = NULL, .getDescription = NULL } };
+                                                  .constraints = { .minimumValue = 0, .maximumValue = 0xFFFF },
+                                                  .callbacks = { .getBitDescription = NULL, .getDescription = NULL } };
 
 const HAPStructTLVMember maximumMTUTypeMember = { .valueOffset = HAP_OFFSETOF(videoRtpParameters, maxMTU),
-                                                 .isSetOffset = 0,
-                                                 .tlvType = 5,
-                                                 .debugDescription = "Maximum MTU Type",
-                                                 .format = &maximumMTUTypeFormat,
-                                                 .isOptional = false,
-                                                 .isFlat = false };
+                                                  .isSetOffset = 0,
+                                                  .tlvType = 5,
+                                                  .debugDescription = "Maximum MTU Type",
+                                                  .format = &maximumMTUTypeFormat,
+                                                  .isOptional = false,
+                                                  .isFlat = false };
 
 /* ---------------------------------------------------------------------------------------------*/
 
-const VideoRTPParametersTypeFormat videoRTPParametersTypeFormat = { .type = kHAPTLVFormatType_Struct,
-                                              .members = (const HAPStructTLVMember* const[]) 
-                                              { &videoRtpParametersMember,
-                                                &maximumMTUTypeMember,
-                                                NULL },
-                                              .callbacks = { .isValid = isValid } };
+const VideoRTPParametersTypeFormat videoRTPParametersTypeFormat = {
+    .type = kHAPTLVFormatType_Struct,
+    .members = (const HAPStructTLVMember* const[]) { &videoRtpParametersMember, &maximumMTUTypeMember, NULL },
+    .callbacks = { .isValid = isValid }
+};
+
+const HAPStructTLVMember videoRTPParametersTypeMember = { .valueOffset =
+                                                                  HAP_OFFSETOF(selectedVideoParameters, rtpParameters),
+                                                          .isSetOffset = 0,
+                                                          .tlvType = 6,
+                                                          .debugDescription = "Selected Video Parameters",
+                                                          .format = &videoRTPParametersTypeFormat,
+                                                          .isOptional = false,
+                                                          .isFlat = false };
 
 /* ---------------------------------------------------------------------------------------------*/
 
 const HAPUInt8TLVFormat comfortNoisePayloadTypeFormat = { .type = kHAPTLVFormatType_UInt8,
-                                            .constraints = { .minimumValue = 0, .maximumValue = 0xFF },
-                                            .callbacks = { .getBitDescription = NULL, .getDescription = NULL } };
+                                                          .constraints = { .minimumValue = 0, .maximumValue = 0xFF },
+                                                          .callbacks = { .getBitDescription = NULL,
+                                                                         .getDescription = NULL } };
 
 const HAPStructTLVMember comfortNoisePayloadTypeMember = { .valueOffset = HAP_OFFSETOF(videoRtpParameters, maxMTU),
-                                                 .isSetOffset = 0,
-                                                 .tlvType = 6,
-                                                 .debugDescription = "Comfort Noise Payload Type",
-                                                 .format = &comfortNoisePayloadTypeFormat,
-                                                 .isOptional = false,
-                                                 .isFlat = false };
+                                                           .isSetOffset = 0,
+                                                           .tlvType = 6,
+                                                           .debugDescription = "Comfort Noise Payload Type",
+                                                           .format = &comfortNoisePayloadTypeFormat,
+                                                           .isOptional = false,
+                                                           .isFlat = false };
 
 /* ---------------------------------------------------------------------------------------------*/
 
-const AudioRTPParametersTypeFormat audioRTPParametersTypeFormat = { .type = kHAPTLVFormatType_Struct,
-                                              .members = (const HAPStructTLVMember* const[]) 
-                                              { &audioRtpParametersMember,
-                                                &comfortNoisePayloadTypeMember,
-                                                NULL },
-                                              .callbacks = { .isValid = isValid } };
+const AudioRTPParametersTypeFormat audioRTPParametersTypeFormat = {
+    .type = kHAPTLVFormatType_Struct,
+    .members = (const HAPStructTLVMember* const[]) { &audioRtpParametersMember, &comfortNoisePayloadTypeMember, NULL },
+    .callbacks = { .isValid = isValid }
+};
+
+const HAPStructTLVMember audioRTPParametersTypeMember = { .valueOffset =
+                                                                  HAP_OFFSETOF(selectedAudioParameters, rtpParameters),
+                                                          .isSetOffset = 0,
+                                                          .tlvType = 6,
+                                                          .debugDescription = "Selected Audio RTP Parameters Type",
+                                                          .format = &audioRTPParametersTypeFormat,
+                                                          .isOptional = false,
+                                                          .isFlat = false };
 
 /* ---------------------------------------------------------------------------------------------*/
 
-const HAPStructTLVMember SelectedVideoRtpParametersMember = {
-                                .valueOffset = HAP_OFFSETOF(selectedRTPStruct, videoParameters),
-                                .isSetOffset = 0,
-                                .tlvType = 2,
-                                .debugDescription = "Selected Video RTP Parameters Type",
-                                .format = &rtpParametersFormat,
-                                .isOptional = false,
-                                .isFlat = true };
+const HAPStructTLVMember videoCodecConfigMember = { .valueOffset = HAP_OFFSETOF(selectedVideoParameters, codecConfig),
+                                                    .isSetOffset = 0,
+                                                    .tlvType = 1,
+                                                    .debugDescription = "Video Codec Config",
+                                                    .format = &videoCodecConfigFormat,
+                                                    .isOptional = false,
+                                                    .isFlat = false };
 
-const HAPStructTLVMember SelectedAudioRtpParametersMember = {
-                                .valueOffset = HAP_OFFSETOF(selectedRTPStruct, audioParameters),
-                                .isSetOffset = 0,
-                                .tlvType = 3,
-                                .debugDescription = "Selected Audio RTP Parameters Type",
-                                .format = &rtpParametersFormat,
-                                .isOptional = false,
-                                .isFlat = true };
+const SelectedVideoParametersFormat selectedVideoParametersFormat = {
+    .type = kHAPTLVFormatType_Struct,
+    .members = (const HAPStructTLVMember* const[]) { &videoCodecConfigMember, &videoRTPParametersTypeMember, NULL },
+    .callbacks = { .isValid = isValid }
+};
+
+const HAPStructTLVMember SelectedVideoRtpParametersMember = { .valueOffset =
+                                                                      HAP_OFFSETOF(selectedRTPStruct, videoParameters),
+                                                              .isSetOffset = 0,
+                                                              .tlvType = 2,
+                                                              .debugDescription = "Selected Video RTP Parameters Type",
+                                                              .format = &selectedVideoParametersFormat,
+                                                              .isOptional = false,
+                                                              .isFlat = true };
+
+/* ---------------------------------------------------------------------------------------------*/
+
+const HAPStructTLVMember audioCodecConfigMember = { .valueOffset = HAP_OFFSETOF(selectedAudioParameters, codecConfig),
+                                                    .isSetOffset = 0,
+                                                    .tlvType = 1,
+                                                    .debugDescription = "Audio Codec Config",
+                                                    .format = &supportedAudioConfigFormat,
+                                                    .isOptional = false,
+                                                    .isFlat = false };
+
+const SelectedAudioParametersFormat selectedAudioParametersFormat = {
+    .type = kHAPTLVFormatType_Struct,
+    .members = (const HAPStructTLVMember* const[]) { &audioCodecConfigMember, &audioRTPParametersTypeMember, NULL },
+    .callbacks = { .isValid = isValid }
+};
+
+const HAPStructTLVMember SelectedAudioRtpParametersMember = { .valueOffset =
+                                                                      HAP_OFFSETOF(selectedRTPStruct, audioParameters),
+                                                              .isSetOffset = 0,
+                                                              .tlvType = 3,
+                                                              .debugDescription = "Selected Audio RTP Parameters Type",
+                                                              .format = &selectedAudioParametersFormat,
+                                                              .isOptional = false,
+                                                              .isFlat = true };
 
 /* ---------------------------------------------------------------------------------------------*/
 
 const HAPUInt8TLVFormat controlSessionCommandTypeFormat = { .type = kHAPTLVFormatType_UInt8,
-                                            .constraints = { .minimumValue = 0, .maximumValue = 4 },
-                                            .callbacks = { .getBitDescription = NULL, .getDescription = NULL } };
+                                                            .constraints = { .minimumValue = 0, .maximumValue = 4 },
+                                                            .callbacks = { .getBitDescription = NULL,
+                                                                           .getDescription = NULL } };
 
 const HAPStructTLVMember controlSessionCommandTypeMember = { .valueOffset = HAP_OFFSETOF(sessionControl, command),
-                                                 .isSetOffset = 0,
-                                                 .tlvType = 2,
-                                                 .debugDescription = "Command Type",
-                                                 .format = &controlSessionCommandTypeFormat,
-                                                 .isOptional = false,
-                                                 .isFlat = false };
+                                                             .isSetOffset = 0,
+                                                             .tlvType = 2,
+                                                             .debugDescription = "Command Type",
+                                                             .format = &controlSessionCommandTypeFormat,
+                                                             .isOptional = false,
+                                                             .isFlat = false };
 
 const HAPStructTLVMember controlSessionIdTypeMember = { .valueOffset = HAP_OFFSETOF(sessionControl, sessionId),
-                                                 .isSetOffset = 0,
-                                                 .tlvType = 1,
-                                                 .debugDescription = "Control Session ID Type",
-                                                 .format = &sessionIdTypeFormat,
-                                                 .isOptional = false,
-                                                 .isFlat = false };
+                                                        .isSetOffset = 0,
+                                                        .tlvType = 1,
+                                                        .debugDescription = "Control Session ID Type",
+                                                        .format = &sessionIdTypeFormat,
+                                                        .isOptional = false,
+                                                        .isFlat = false };
 
-const SessionControlTypeFormat sessionControlTypeFormat = { .type = kHAPTLVFormatType_Struct,
-                                              .members = (const HAPStructTLVMember* const[]) 
-                                              { &controlSessionIdTypeMember,
-                                                &controlSessionCommandTypeMember,
-                                                NULL },
-                                              .callbacks = { .isValid = isValid } };
+const SessionControlTypeFormat sessionControlTypeFormat = {
+    .type = kHAPTLVFormatType_Struct,
+    .members =
+            (const HAPStructTLVMember* const[]) { &controlSessionIdTypeMember, &controlSessionCommandTypeMember, NULL },
+    .callbacks = { .isValid = isValid }
+};
 
 const HAPStructTLVMember sessionControlTypeMember = { .valueOffset = HAP_OFFSETOF(selectedRTPStruct, control),
-                                                 .isSetOffset = 0,
-                                                 .tlvType = 1,
-                                                 .debugDescription = "Session ID Type",
-                                                 .format = &sessionIdTypeFormat,
-                                                 .isOptional = false,
-                                                 .isFlat = false };
+                                                      .isSetOffset = 0,
+                                                      .tlvType = 1,
+                                                      .debugDescription = "Session ID Type",
+                                                      .format = &sessionIdTypeFormat,
+                                                      .isOptional = false,
+                                                      .isFlat = false };
 /* ---------------------------------------------------------------------------------------------*/
 
-const SelectedRTPFormat selectedRTPFormatWrite = { 
+const SelectedRTPFormat selectedRTPFormatWrite = {
     .type = kHAPTLVFormatType_Struct,
     .members = (const HAPStructTLVMember* const[]) { &sessionControlTypeMember,
                                                      &SelectedVideoRtpParametersMember,
                                                      &SelectedAudioRtpParametersMember,
                                                      NULL },
-    .callbacks = { .isValid = isValid } };
+    .callbacks = { .isValid = isValid }
+};
 
 /* ---------------------------------------------------------------------------------------------*/
 
-HAPError handleSessionRead(HAPTLVWriterRef * responseWriter, streamingSession* session) {
+HAPError handleSessionRead(HAPTLVWriterRef* responseWriter, streamingSession* session) {
     HAPError err;
     err = HAPTLVWriterEncode(responseWriter, &streamingSessionFormatRead, session);
     return err;
