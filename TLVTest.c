@@ -26,18 +26,18 @@ typedef struct {
 HAPError handleSetupEndpointsWrite(HAPTLVReaderRef* reader, void* context) {
     HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     HAPError err;
-    AccessoryContext* myContext = context; 
+    AccessoryContext* myContext = context;
     streamingSession* session = &(myContext->session);
-    err = handleWrite(reader, session);
+    err = handleSessionWrite(reader, session);
     HAPAssert(!err);
 
     return err;
-
 };
 
-HAPError handleSetupEndpointsRead(HAPTLVWriterRef* responseWriter, void* context){
+HAPError handleSetupEndpointsRead(HAPTLVWriterRef* responseWriter, void* context) {
+    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     HAPError err;
-    AccessoryContext* myContext = context; 
+    AccessoryContext* myContext = context;
     streamingSession* session = &(myContext->session);
     controllerAddressStruct accessoryAddress = session->controllerAddress;
     const char ipAddr[] = "10.0.1.5";
@@ -53,43 +53,57 @@ HAPError handleSetupEndpointsRead(HAPTLVWriterRef* responseWriter, void* context
     session->ssrcVideo = 1;
     session->ssrcAudio = 1;
 
-    
     uint8_t bytes[1024];
     HAPTLVWriterCreate(responseWriter, &bytes, sizeof bytes);
-    err = handleRead(responseWriter, session);
+    err = handleSessionRead(responseWriter, session);
 
     return err;
 }
 
-HAPError testSelectedRTP() {
+HAPError handleSelectedRTPWrite(HAPTLVReaderRef* requestReader, selectedRTPStruct* selectedRtp, void* context) {
     HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    HAPError err;
+    // err = HAPTLVReaderGetAll(requestReader, (HAPTLV* const[]) { NULL });
+    AccessoryContext* myContext = context;
+    streamingSession* session = &(myContext->session);
+    err = handleSelectedWrite(requestReader, selectedRtp);
+    HAPAssert(!err);
+
+    HAPAssert(HAPRawBufferAreEqual(session->sessionId, selectedRtp->control.sessionId, UUIDLENGTH));
+    return err;
+}
+
+HAPError testSelectedRTP(void* context) {
+    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
+    HAPError err;
     uint8_t setupBytes[sizeof(selectedRTP)];
     HAPRawBufferCopyBytes(&setupBytes, &selectedRTP, sizeof(selectedRTP)); // make a copy so we can compare later
-    HAPError err;
-    HAPTLVReaderRef reader;
+    HAPTLVReaderRef selectedRTPReader;
     HAPTLVReaderCreateWithOptions(
-            &reader,
+            &selectedRTPReader,
             &(const HAPTLVReaderOptions) { .bytes = setupBytes,
                                            .numBytes = HAPArrayCount(setupBytes),
                                            .maxBytes = HAPArrayCount(setupBytes) });
 
-    err = HAPTLVReaderGetAll(&reader, (HAPTLV* const[]) { NULL });
+    selectedRTPStruct selectedRtp;
+
+    err = handleSelectedRTPWrite(&selectedRTPReader, &selectedRtp, &context);
 
     return err;
 };
 
-HAPError testCrossFile(void* context){
-
+HAPError testSetupEndpoints(void* context) {
+    HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     HAPError err;
     HAPTLVReaderRef setupEndpointsReader;
 
     uint8_t setupBytes[sizeof(setupEndpoints)];
     HAPRawBufferCopyBytes(&setupBytes, &setupEndpoints, sizeof(setupEndpoints));
     HAPTLVReaderCreateWithOptions(
-        &setupEndpointsReader,
-        &(const HAPTLVReaderOptions) { .bytes = setupBytes,
-                                        .numBytes = HAPArrayCount(setupBytes),
-                                        .maxBytes = HAPArrayCount(setupBytes) });
+            &setupEndpointsReader,
+            &(const HAPTLVReaderOptions) { .bytes = setupBytes,
+                                           .numBytes = HAPArrayCount(setupBytes),
+                                           .maxBytes = HAPArrayCount(setupBytes) });
     err = handleSetupEndpointsWrite(&setupEndpointsReader, context);
     HAPAssert(!err);
 
@@ -104,7 +118,7 @@ HAPError testCrossFile(void* context){
 
     HAPLogDebug(&kHAPLog_Default, "size of output: %lu", numActualBytes);
 
-//TODO - Now moving on to selected RTP with this context
+    // TODO - Now moving on to selected RTP with this context
 
     return err;
 }
@@ -113,8 +127,9 @@ int main() {
 
     static AccessoryContext context;
     HAPError err;
-    err = testCrossFile(&context);
-    // err = testStreamingSession();
+    err = testSetupEndpoints(&context);
+    HAPAssert(!err);
+    err = testSelectedRTP(&context);
     return err;
 
     /*     for (size_t i = 0; i < numActualBytes; i++)
