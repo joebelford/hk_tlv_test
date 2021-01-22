@@ -30,49 +30,51 @@ extern "C" {
 #define UUIDLENGTH 16
 
 extern struct VideoCodecConfigFormat videoCodecConfigFormat;
-extern struct SupportedAudioConfigFormat supportedAudioConfigFormat;
+extern struct AudioCodecConfigFormat audioCodecConfigFormat;
 
 HAP_ENUM_BEGIN(uint8_t, HAPCharacteristicValue_RTPCommand) { /** Inactive. */
-                                                            kHAPCharacteristicValue_RTPCommand_End = 0,
+                                                             kHAPCharacteristicValue_RTPCommand_End = 0,
 
-                                                            /** Active. */
-                                                            kHAPCharacteristicValue_RTPCommand_Start,
+                                                             /** Active. */
+                                                             kHAPCharacteristicValue_RTPCommand_Start,
 
-                                                            /** Active. */
-                                                            kHAPCharacteristicValue_RTPCommand_Suspend,
+                                                             /** Active. */
+                                                             kHAPCharacteristicValue_RTPCommand_Suspend,
 
-                                                            /** Active. */
-                                                            kHAPCharacteristicValue_RTPCommand_Resume,
+                                                             /** Active. */
+                                                             kHAPCharacteristicValue_RTPCommand_Resume,
 
-                                                            /** Active. */
-                                                            kHAPCharacteristicValue_RTPCommand_Reconfigure
+                                                             /** Active. */
+                                                             kHAPCharacteristicValue_RTPCommand_Reconfigure
 } HAP_ENUM_END(uint8_t, HAPCharacteristicValue_RTPCommand);
 
 typedef struct {
-    uint8_t payloadType; //type of video codec
-    uint32_t ssrc; //ssrc for video stream
-    uint16_t maximumBitrate; //in kbps and averaged over 1 sec
-    uint32_t minRTCPinterval; //Minimum RTCP interval in seconds formatted as a 4 byte little endian ieee754 floating point value
+    uint8_t payloadType;      // type of video codec
+    uint32_t ssrc;            // ssrc for video stream
+    uint16_t maximumBitrate;  // in kbps and averaged over 1 sec
+    uint32_t minRTCPinterval; // Minimum RTCP interval in seconds formatted as a 4 byte little endian ieee754 floating
+                              // point value
 } rtpParameters;
 
 typedef struct {
-    rtpParameters rtpParameters;
-    uint16_t maxMTU; //MTU accessory must use to transmit video RTP packets  Only populated for non-default?? value.
+    rtpParameters vRtpParameters;
+    uint16_t maxMTU; // MTU accessory must use to transmit video RTP packets  Only populated for non-default?? value.
 } videoRtpParameters;
 
 typedef struct {
     rtpParameters rtpParameters;
-    uint8_t comfortNoisePayload; //Only required when Comfort Noise is chosen in selected audio parameters TLV
+    uint8_t comfortNoisePayload; // Only required when Comfort Noise is chosen in selected audio parameters TLV
 } audioRtpParameters;
 
 typedef struct {
     videoCodecConfigStruct codecConfig;
-    videoRtpParameters rtpParameters;
+    videoRtpParameters vRtpParameters;
 } selectedVideoParameters;
 
 typedef struct {
-    supportedAudioConfigStruct codecConfig;
+    audioCodecConfigStruct codecConfig;
     audioRtpParameters rtpParameters;
+    uint8_t comfortNoise; // 1 = Comfort Noise selected
 } selectedAudioParameters;
 
 typedef struct {
@@ -106,7 +108,6 @@ typedef struct {
     HAPCharacteristicValue_RTPCommand command;
 } sessionControl;
 
-
 typedef struct {
     sessionControl control;
     selectedVideoParameters videoParameters;
@@ -118,6 +119,8 @@ HAPError handleSessionRead(HAPTLVWriterRef* responseWriter, streamingSession* se
 HAPError handleSessionWrite(HAPTLVReaderRef* responseReader, streamingSession* settings);
 
 HAPError handleSelectedWrite(HAPTLVReaderRef* responseReader, selectedRTPStruct* selectedRTP);
+
+void checkFormats();
 
 #if __has_feature(nullability)
 #pragma clang assume_nonnull end
