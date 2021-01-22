@@ -11,8 +11,7 @@ extern "C" {
 #include <stdlib.h>
 #include <unistd.h>
 #include "setupEndpointsTLV.h"
-#include "StreamingConfiguration.h"
-#include "StreamingSession.h"
+#include "streaming.h"
 #include "selectedRTPTLV.h"
 
 #if __has_feature(nullability)
