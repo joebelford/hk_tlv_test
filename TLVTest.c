@@ -11,8 +11,8 @@ extern "C" {
 #include <stdlib.h>
 #include <unistd.h>
 #include "setupEndpointsTLV.h"
-#include "StreamingSession.h"
 #include "StreamingConfiguration.h"
+#include "StreamingSession.h"
 #include "selectedRTPTLV.h"
 
 #if __has_feature(nullability)
@@ -60,16 +60,16 @@ HAPError handleSetupEndpointsRead(HAPTLVWriterRef* responseWriter, void* context
     return err;
 }
 
-HAPError handleSelectedRTPWrite(HAPTLVReaderRef* requestReader, selectedRTPStruct* selectedRtp, void* context) {
+HAPError handleSelectedRTPWrite(HAPTLVReaderRef* requestReader, selectedRTPStruct* selectedRtp, void* context HAP_UNUSED) {
     HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     HAPError err;
     // err = HAPTLVReaderGetAll(requestReader, (HAPTLV* const[]) { NULL });
-    AccessoryContext* myContext = context;
-    streamingSession* session = &(myContext->session);
+    // AccessoryContext* myContext = context;
+    // streamingSession* session = &(myContext->session);
     err = handleSelectedWrite(requestReader, selectedRtp);
-    HAPAssert(!err);
+    // HAPAssert(!err);
 
-    HAPAssert(HAPRawBufferAreEqual(session->sessionId, selectedRtp->control.sessionId, UUIDLENGTH));
+    // HAPAssert(HAPRawBufferAreEqual(session->sessionId, selectedRtp->control.sessionId, UUIDLENGTH));
     return err;
 }
 
@@ -77,12 +77,13 @@ HAPError testSelectedRTP(void* context) {
     HAPLogInfo(&kHAPLog_Default, "%s", __func__);
     HAPError err;
     uint8_t setupBytes[sizeof(selectedRTP)];
+    HAPRawBufferZero(setupBytes, sizeof(setupBytes));
     HAPRawBufferCopyBytes(&setupBytes, &selectedRTP, sizeof(selectedRTP)); // make a copy so we can compare later
     HAPTLVReaderRef selectedRTPReader;
     HAPTLVReaderCreateWithOptions(
             &selectedRTPReader,
             &(const HAPTLVReaderOptions) { .bytes = setupBytes,
-                                           .numBytes = HAPArrayCount(setupBytes),
+                                           .numBytes = sizeof(selectedRTP),
                                            .maxBytes = HAPArrayCount(setupBytes) });
 
     selectedRTPStruct selectedRtp;
@@ -131,6 +132,11 @@ int main() {
     HAPAssert(!err);
     err = testSelectedRTP(&context);
     return err;
+
+    // check formats:
+    // checkFormats();
+
+    return kHAPError_None;
 
     /*     for (size_t i = 0; i < numActualBytes; i++)
         {
