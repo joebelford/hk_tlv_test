@@ -299,6 +299,7 @@ const VideoCodecConfigFormat videoCodecConfigFormat = {
                                                      NULL },
     .callbacks = { .isValid = isValid }
 };
+
 const HAPStructTLVMember videoCodecConfigMember = { .valueOffset =
                                                             HAP_OFFSETOF(supportedVideoConfigStruct, videoCodecConfig),
                                                     .isSetOffset = 0,
